@@ -91,8 +91,6 @@ function mergeRects(rects: Rect[]) {
       }
     }
     if (toMerge != null) {
-      console.log('toMerge', toMerge.startX, toMerge.startY, toMerge.endX, toMerge.endY)
-      console.log('target', rect.startX, rect.startY, rect.endX, rect.endY)
       toMerge.startX = Math.min(toMerge.startX, rect.startX)
       toMerge.startY = Math.min(toMerge.startY, rect.startY)
       toMerge.endX = Math.max(toMerge.endX, rect.endX)
@@ -133,7 +131,7 @@ export type ExtractYieldedTypeRows = {
   type: 'rows'
   rowNum: number
   colNum: number
-  rows: Rect[][]
+  rows: Blob[][]
 }
 
 type ExtractYielded = ExtractYieldedTypeSize | ExtractYieldedTypeRect | ExtractYieldedTypeRects | ExtractYieldedTypeMergedRects | ExtractYieldedTypeRows
@@ -161,27 +159,39 @@ export async function* extractSprites(img: HTMLImageElement): AsyncGenerator<Ext
   let mergedRects = rects
   while (true) {
     const newMergedRects = mergeRects(mergedRects)
-    console.log(`merge: ${mergedRects.length} -> ${newMergedRects.length}`)
     if (newMergedRects.length === mergedRects.length) break
     mergedRects = newMergedRects
   }
 
   yield { type: 'mergedRects', rects: mergedRects }
 
-  const rows: Rect[][] = []
-  let row: Rect[] = []
+  const rectRows: Rect[][] = []
+  let rectRow: Rect[] = []
   for (let i = 0; i < mergedRects.length; i++) {
     const rect = mergedRects[i]
     const prevRect = mergedRects[i - 1]
     if (prevRect == null || rect.startY < prevRect.endY) {
-      row.push(rect)
+      rectRow.push(rect)
       continue
     }
-    rows.push(row)
-    row = [rect]
+    rectRows.push(rectRow)
+    rectRow = [rect]
   }
-  rows.push(row)
-  const rowNum = Math.max(...rows.map(row => row.length))
-  const colNum = rows.length
+  rectRows.push(rectRow)
+  const colNum = Math.max(...rectRows.map(row => row.length))
+  const rowNum = rectRows.length
+  const rows: Blob[][] = await Promise.all(
+    rectRows.map((row, i) => Promise.all(
+      row.map((_, j) => cutImage(img, rowNum, colNum, i, j))
+    ))
+  )
   yield { type: 'rows', rowNum, colNum, rows }
+}
+
+function cutImage(img: HTMLImageElement, rowNum: number, colNum: number, rowIndex: number, colIndex: number) {
+  const rectSize = { width: img.naturalWidth / colNum, height: img.naturalHeight / rowNum }
+  const canvas = new OffscreenCanvas(rectSize.width, rectSize.height)
+  const context = canvas.getContext('2d')!
+  context.drawImage(img, rectSize.width * colIndex, rectSize.height * rowIndex, rectSize.width, rectSize.height, 0, 0, canvas.width, canvas.height)
+  return canvas.convertToBlob({ type: 'image/png' })
 }

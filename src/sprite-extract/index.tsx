@@ -16,13 +16,20 @@ type StateMerged = {
   rects: Rect[]
 }
 
-type StateDone = {
-  type: 'done'
+type StateSplitting = {
+  type: 'splitting'
   rowNum: number
   colNum: number
 }
 
-type State = StateInitial | StateRecognizing | StateMerged | StateDone
+type StateDone = {
+  type: 'done'
+  rowNum: number
+  colNum: number
+  rows: Blob[][]
+}
+
+type State = StateInitial | StateRecognizing | StateMerged | StateSplitting | StateDone
 
 export default function SpriteExtract() {
 
@@ -104,28 +111,31 @@ export default function SpriteExtract() {
       }
       await sleep(1)
 
-      const { value: { rowNum, colNum } } = (await extracting.next()) as IteratorYieldResult<ExtractYieldedTypeRows>
+      const { value: { rowNum, colNum, rows } } = (await extracting.next()) as IteratorYieldResult<ExtractYieldedTypeRows>
       if (cancelled) return
-      setState({ type: 'done', rowNum, colNum })
+      setState({ type: 'splitting', rowNum, colNum })
       drawImage()
       context.strokeStyle = '#999999'
       context.lineWidth = 1
       for (let i = 1; i < rowNum; i++) {
-        const x = Math.round(i * canvas.width / rowNum)
-        context.beginPath()
-        context.setLineDash([5, 10])
-        context.moveTo(x, 0)
-        context.lineTo(x, canvas.height)
-        context.stroke()
-      }
-      for (let i = 1; i < colNum; i++) {
-        const y = Math.round(i * canvas.height / colNum)
+        const y = Math.round(i * canvas.height / rowNum)
         context.beginPath()
         context.setLineDash([5, 10])
         context.moveTo(0, y)
         context.lineTo(canvas.width, y)
         context.stroke()
       }
+      for (let i = 1; i < colNum; i++) {
+        const x = Math.round(i * canvas.width / colNum)
+        context.beginPath()
+        context.setLineDash([5, 10])
+        context.moveTo(x, 0)
+        context.lineTo(x, canvas.height)
+        context.stroke()
+      }
+      await sleep(1)
+
+      setState({ type: 'done', rowNum, colNum, rows })
     })()
     return () => {
       cancelled = true
@@ -160,9 +170,21 @@ export default function SpriteExtract() {
         {state.type === 'initial' && `Click "Do Extract" to start`}
         {state.type === 'recognizing' && `Recognizing, ${state.rects.length} sprites`}
         {state.type === 'merged' && `Merged: ${state.rects.length} sprites`}
+        {state.type === 'splitting' && `Split: ${state.rowNum} x ${state.colNum}`}
         {state.type === 'done' && `Done: ${state.rowNum} x ${state.colNum}`}
       </p>
-      <canvas className='max-w-full max-h-80 shadow-inner p-4 rounded-lg mt-8 bg-slate-50' ref={setCanvas}></canvas>
+      <div className={state.type === 'done' ? 'hidden' : 'mt-8'}>
+        <canvas className='max-w-full max-h-80 shadow-inner p-4 rounded-lg bg-slate-50' ref={setCanvas}></canvas>
+      </div>
+      <div className='max-w-full overflow-auto mt-8 flex flex-col gap-4'>
+        {state.type === 'done' && state.rows.map((row, i) => (
+          <div key={i} className='flex justify-start gap-4'>
+            {row.map((blob, j) => (
+              <img key={j} src={URL.createObjectURL(blob)} alt='' className='max-w-52 max-h-52 object-contain shadow-inner p-4 rounded-lg bg-slate-50' />
+            ))}
+          </div>
+        ))}
+      </div>
     </section>
   )
 }
