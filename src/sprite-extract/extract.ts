@@ -137,7 +137,7 @@ export type ExtractYieldedTypeRows = {
 type ExtractYielded = ExtractYieldedTypeSize | ExtractYieldedTypeRect | ExtractYieldedTypeRects | ExtractYieldedTypeMergedRects | ExtractYieldedTypeRows
 
 export async function* extractSprites(img: HTMLImageElement): AsyncGenerator<ExtractYielded> {
-  const maxCanvasSize = 800 * 800
+  const maxCanvasSize = 2000 * 2000 // to avoid performance issue
   const scale = Math.min(Math.sqrt(maxCanvasSize / (img.naturalWidth * img.naturalHeight)), 1)
   const size = { width: img.naturalWidth * scale, height: img.naturalHeight * scale }
   yield { type: 'size', ...size }

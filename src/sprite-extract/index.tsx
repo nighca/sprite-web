@@ -53,12 +53,10 @@ export default function SpriteExtract() {
     setState({ type: 'initial' })
     ;(async () => {
       const img = await createImage(imgUrl)
-      const maxSize = 800 * 800
-      const scale = Math.min(Math.sqrt(maxSize / (img.naturalWidth * img.naturalHeight)), 1)
-      canvas.width = img.naturalWidth * scale
-      canvas.height = img.naturalHeight * scale
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
       const context = canvas.getContext('2d')!
-      context.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, 0, 0, canvas.width, canvas.height)
+      context.drawImage(img, 0, 0)
     })()
   }, [imgUrl, canvas])
 
@@ -174,7 +172,7 @@ export default function SpriteExtract() {
         {state.type === 'done' && `Done: ${state.rowNum} x ${state.colNum}`}
       </p>
       <div className={state.type === 'done' ? 'hidden' : 'mt-8'}>
-        <canvas className='max-w-full max-h-80 shadow-inner p-4 rounded-lg bg-slate-50' ref={setCanvas}></canvas>
+        <canvas className='max-w-full shadow-inner p-4 rounded-lg bg-slate-50' ref={setCanvas}></canvas>
       </div>
       <div className='max-w-full overflow-auto mt-8 flex flex-col gap-4'>
         {state.type === 'done' && state.rows.map((row, i) => (
