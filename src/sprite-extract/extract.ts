@@ -103,7 +103,8 @@ function mergeRects(rects: Rect[]) {
 }
 
 function getBgColor(data: ImageData) {
-  return getPixel(data, [0, 0]); // TODO
+  // 1px offset for better result (sometimes there's a thin border around the sprite)
+  return getPixel(data, [1, 1])
 }
 
 export type ExtractYieldedTypeSize = {
@@ -146,7 +147,7 @@ export async function* extractSprites(img: HTMLImageElement): AsyncGenerator<Ext
   const context = canvas.getContext('2d')!
   context.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, 0, 0, canvas.width, canvas.height)
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
-  const bgColor = getBgColor(imageData)
+  const bgColor = getBgColor(imageData) // TODO: allow caller to adjust color
 
   const rects: Rect[] = []
   for (const rect of getRects(imageData, bgColor)) {
@@ -180,6 +181,8 @@ export async function* extractSprites(img: HTMLImageElement): AsyncGenerator<Ext
   rectRows.push(rectRow)
   const colNum = Math.max(...rectRows.map(row => row.length))
   const rowNum = rectRows.length
+  // TODO: allow caller to adjust row & col
+
   const rows: Blob[][] = await Promise.all(
     rectRows.map((row, i) => Promise.all(
       row.map((_, j) => cutImage(img, rowNum, colNum, i, j))
